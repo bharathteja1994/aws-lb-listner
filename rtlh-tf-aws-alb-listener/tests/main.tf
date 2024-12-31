@@ -224,7 +224,7 @@ module "api_gateway" {
 
   protocol_type      = "HTTP"
   integration_type   = "HTTP_PROXY"
-  integration_uri    = "http://${aws_lb.main.dns_name}/v1/webhooks/databricks"
+  integration_uri    = "http://${module.alb.dns_name}/v1/webhooks/databricks"
   integration_method = "POST"
   route_keys = {
     "POST /"       = "POST /",
@@ -294,5 +294,5 @@ module "api_gateway" {
     }
   ]
   subnet_ids         = var.subnet_ids
-  security_group_ids = [aws_security_group.alb_sg.id]
+  security_group_ids = var.security_group_ids
 }
