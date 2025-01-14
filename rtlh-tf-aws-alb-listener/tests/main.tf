@@ -21,6 +21,14 @@ module "alb-redirect" {
   subnets                    = var.subnet_ids
 }
 
+module "alb-api" {
+  source                     = "github.com/rio-tinto/rtlh-tf-aws-alb?ref=v1.1.2"
+  context                    = "api"
+  enable_deletion_protection = false
+  security_group_ids         = var.security_group_ids
+  subnets                    = var.subnet_ids
+}
+
 module "ec2_instance_test-01" {
   source          = "github.com/rio-tinto/rtlh-tf-aws-ec2?ref=v1.2.3"
   context         = "tst"
@@ -218,13 +226,33 @@ module "alb_listener_redirect" {
   listener_rules = []
 }
 
+module "alb_http_listener" {
+  source            = ".//.."
+  alb_name          = module.alb-api.name
+  load_balancer_arn = module.alb-api.arn
+  protocal          = "HTTP"
+  port              = 80
+  default_rule = [{
+    type = "redirect"
+    redirect = [{
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }]
+    authenticate_cognito = []
+    authenticate_oidc    = []
+    fixed_response      = []
+    forward             = []
+  }]
+  listener_rules = []
+}
 
 module "api_gateway" {
   source = "./api-tf"
 
   protocol_type      = "HTTP"
   integration_type   = "HTTP_PROXY"
-  integration_uri    = "http://${module.alb.dns_name}/v1/webhooks/databricks"
+  integration_uri    = module.alb_http_listener.alb_listener_arn
   integration_method = "POST"
   route_keys = {
     "POST /"       = "POST /",
